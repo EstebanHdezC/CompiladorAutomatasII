@@ -1,47 +1,217 @@
 package Compilador;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import javax.swing.table.DefaultTableModel;
+import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class Entrada extends JFrame {
-    private JTextArea inputArea;
-    private JButton processButton;
+public class Salida extends JFrame {
 
-    public Entrada() {
-        setTitle("Proyecto Evaluación I - Entrada");
-        setSize(400, 300);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
+    private HashMap<String, Object> variables;
+    private DefaultTableModel modeloSimbolos;
+    private DefaultTableModel modeloErrores;
+    private int numeroLinea = 1;
+    private int contadorErrores = 1;  // Variable para contar los errores
 
-        // Área de texto para las instrucciones de entrada
-        inputArea = new JTextArea();
-        inputArea.setLineWrap(true);
-        inputArea.setWrapStyleWord(true);
-        JScrollPane scrollPane = new JScrollPane(inputArea);
-        add(scrollPane, BorderLayout.CENTER);
+    public Salida(String instrucciones) {
+        setTitle("Salida - Proyecto Evaluación I");
+        setSize(800, 400);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 
-        // Botón para procesar
-        processButton = new JButton("Procesar Instrucciones");
-        processButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Lógica para procesar las instrucciones
-                String instrucciones = inputArea.getText();
-                new Salida(instrucciones).setVisible(true); // Pasa las instrucciones a la ventana de salida
-            }
-        });
+        // Crear tablas
+        String[] columnasSimbolos = {"Lexema", "Tipo"};
+        String[] columnasErrores = {"Token", "Lexema", "Renglón", "Descripción"};
+        JTable tablaSimbolos = new JTable(new DefaultTableModel(new Object[0][2], columnasSimbolos));
+        modeloSimbolos = (DefaultTableModel) tablaSimbolos.getModel();
+        modeloErrores = new DefaultTableModel(new Object[0][4], columnasErrores);
+        JTable tablaErrores = new JTable(modeloErrores);
 
-        add(processButton, BorderLayout.SOUTH);
+        JScrollPane panelSimbolos = new JScrollPane(tablaSimbolos);
+        JScrollPane panelErrores = new JScrollPane(tablaErrores);
+
+        add(new JLabel("Tabla de Símbolos"));
+        add(panelSimbolos);
+        add(new JLabel("Tabla de Errores"));
+        add(panelErrores);
+
+        // Inicializar el mapa de variables
+        variables = new HashMap<>();
+
+        // Procesar las instrucciones
+        String[] lineas = instrucciones.split("\n");
+        for (String linea : lineas) {
+            procesarInstruccion(linea.trim());
+            numeroLinea++;
+        }
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new Entrada().setVisible(true);
+    private void procesarInstruccion(String instruccion) {
+        // Regex para capturar variables y expresiones
+        Pattern patronAsignacion = Pattern.compile("@([A-Za-z0-9_]+)~=(.+)");
+        Matcher matcher = patronAsignacion.matcher(instruccion);
+
+        if (matcher.matches()) {
+            String variable = matcher.group(1);
+            String expresion = matcher.group(2).trim();
+
+            // Evaluar la expresión o asignar valor directo
+            Object resultado = evaluarExpresion(expresion);
+            if (resultado != null) {
+                variables.put(variable, resultado);
+
+                // Determinar el tipo de dato
+                String tipo;
+                if (resultado instanceof Integer) {
+                    tipo = "Entero";
+                } else if (resultado instanceof Double) {
+                    tipo = "Real";
+                } else {
+                    tipo = "Cadena";
+                }
+                // Añadir el lexema y el tipo a la tabla de símbolos
+                registrarSimbolo("@" + variable + "~", tipo);
             }
-        });
+        } else {
+            agregarError(instruccion, numeroLinea, "Instrucción no válida");
+        }
+    }
+
+    private Object evaluarExpresion(String expresion) {
+        try {
+            // Reemplazar las variables en la expresión con sus valores
+            for (String var : variables.keySet()) {
+                Object valor = variables.get(var);
+                if (valor instanceof String) {
+                    expresion = expresion.replace("@" + var + "~", "\"" + valor + "\"");
+                } else {
+                    expresion = expresion.replace("@" + var + "~", valor.toString());
+                }
+            }
+
+            // Verificar si hay variables no declaradas
+            Pattern variablePattern = Pattern.compile("@([A-Za-z0-9_]+)~");
+            Matcher matcher = variablePattern.matcher(expresion);
+            while (matcher.find()) {
+                String var = matcher.group(1);
+                if (!variables.containsKey(var)) {
+                    agregarError("@" + var + "~", numeroLinea, "Variable indefinida");
+                    return null;
+                }
+            }
+
+            // Evaluar la expresión aritmética
+            return evaluarOperaciones(expresion);
+
+        } catch (Exception e) {
+            agregarError("Expresión", numeroLinea, "Expresión no válida");
+            return null;
+        }
+    }
+
+    private Object evaluarOperaciones(String expresion) {
+        // Verifica si la expresión es un número o cadena
+        if (expresion.startsWith("\"") && expresion.endsWith("\"")) {
+            registrarSimbolo(expresion, "Cadena");
+            return expresion.substring(1, expresion.length() - 1);
+        } else if (expresion.matches("-?\\d+")) {
+            registrarSimbolo(expresion, "Entero");
+            return Integer.parseInt(expresion);
+        } else if (expresion.matches("-?\\d+\\.\\d+")) {
+            registrarSimbolo(expresion, "Real");
+            return Double.parseDouble(expresion);
+        } else {
+            // Evaluar las operaciones aritméticas
+            return evaluarOperacionesAritmeticas(expresion);
+        }
+    }
+
+    private Object evaluarOperacionesAritmeticas(String expresion) {
+        if (expresion.contains("+")) {
+            registrarSimbolo("+", "");
+            String[] tokens = expresion.split("\\+");
+            Object left = evaluarOperaciones(tokens[0].trim());
+            Object right = evaluarOperaciones(tokens[1].trim());
+            return combinarOperaciones(left, right, "+");
+        } else if (expresion.contains("-")) {
+            registrarSimbolo("-", "");
+            String[] tokens = expresion.split("-");
+            Object left = evaluarOperaciones(tokens[0].trim());
+            Object right = evaluarOperaciones(tokens[1].trim());
+            return combinarOperaciones(left, right, "-");
+        } else if (expresion.contains("*")) {
+            registrarSimbolo("*", "");
+            String[] tokens = expresion.split("\\*");
+            Object left = evaluarOperaciones(tokens[0].trim());
+            Object right = evaluarOperaciones(tokens[1].trim());
+            return combinarOperaciones(left, right, "*");
+        } else if (expresion.contains("/")) {
+            registrarSimbolo("/", "");
+            String[] tokens = expresion.split("/");
+            Object left = evaluarOperaciones(tokens[0].trim());
+            Object right = evaluarOperaciones(tokens[1].trim());
+            return combinarOperaciones(left, right, "/");
+        }
+        return convertirAMNumero(expresion); // Si es un número directo
+    }
+
+    private Object combinarOperaciones(Object left, Object right, String operador) {
+        if (left instanceof String || right instanceof String) {
+            agregarError("Incompatibilidad de tipos", numeroLinea, "Operación inválida entre tipos incompatibles - " + operador);
+            return null;
+        }
+
+        double leftValue = convertirAMNumero(left.toString());
+        double rightValue = convertirAMNumero(right.toString());
+
+        switch (operador) {
+            case "+":
+                return convertirSegunTipo(leftValue + rightValue);
+            case "-":
+                return convertirSegunTipo(leftValue - rightValue);
+            case "*":
+                return convertirSegunTipo(leftValue * rightValue);
+            case "/":
+                if (rightValue == 0) {
+                    agregarError("División por cero", numeroLinea, "Operación inválida - División por cero");
+                    return null;
+                }
+                return convertirSegunTipo(leftValue / rightValue);
+            default:
+                return null;
+        }
+    }
+
+    private double convertirAMNumero(String valor) {
+        try {
+            return Double.parseDouble(valor);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private Object convertirSegunTipo(double valor) {
+        // Verifica si el valor tiene parte decimal
+        if (Math.floor(valor) == valor) {
+            return (int) valor; // Si no tiene parte decimal, es un entero
+        } else {
+            return valor; // Si tiene parte decimal, es un real
+        }
+    }
+
+    private void registrarSimbolo(String lexema, String tipo) {
+        // Evitar duplicados
+        for (int i = 0; i < modeloSimbolos.getRowCount(); i++) {
+            if (modeloSimbolos.getValueAt(i, 0).equals(lexema)) {
+                return;
+            }
+        }
+        modeloSimbolos.addRow(new Object[]{lexema, tipo});
+    }
+
+    private void agregarError(String lexema, int renglon, String descripcion) {
+        String codigoError = "ER" + contadorErrores++;  // Incrementar el contador de errores
+        modeloErrores.addRow(new Object[]{codigoError, lexema, renglon, descripcion});
     }
 }
