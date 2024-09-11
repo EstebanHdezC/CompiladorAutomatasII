@@ -1,0 +1,47 @@
+package Compilador;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+public class Entrada extends JFrame {
+    private JTextArea inputArea;
+    private JButton processButton;
+
+    public Entrada() {
+        setTitle("Proyecto Evaluación I - Entrada");
+        setSize(400, 300);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Área de texto para las instrucciones de entrada
+        inputArea = new JTextArea();
+        inputArea.setLineWrap(true);
+        inputArea.setWrapStyleWord(true);
+        JScrollPane scrollPane = new JScrollPane(inputArea);
+        add(scrollPane, BorderLayout.CENTER);
+
+        // Botón para procesar
+        processButton = new JButton("Procesar Instrucciones");
+        processButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Lógica para procesar las instrucciones
+                String instrucciones = inputArea.getText();
+                new Salida(instrucciones).setVisible(true); // Pasa las instrucciones a la ventana de salida
+            }
+        });
+
+        add(processButton, BorderLayout.SOUTH);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new Entrada().setVisible(true);
+            }
+        });
+    }
+}
