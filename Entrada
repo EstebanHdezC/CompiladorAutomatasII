@@ -57,7 +57,7 @@ public class Salida extends JFrame {
             String expresion = matcher.group(2).trim();
 
             // Evaluar la expresión o asignar valor directo
-            Object resultado = evaluarExpresion(expresion);
+            Object resultado = evaluarExpresion(expresion, variable);
             if (resultado != null) {
                 variables.put(variable, resultado);
 
@@ -78,7 +78,7 @@ public class Salida extends JFrame {
         }
     }
 
-    private Object evaluarExpresion(String expresion) {
+    private Object evaluarExpresion(String expresion, String variable) {
         try {
             // Reemplazar las variables en la expresión con sus valores
             for (String var : variables.keySet()) {
@@ -102,7 +102,7 @@ public class Salida extends JFrame {
             }
 
             // Evaluar la expresión aritmética
-            return evaluarOperaciones(expresion);
+            return evaluarOperaciones(expresion, variable);
 
         } catch (Exception e) {
             agregarError("Expresión", numeroLinea, "Expresión no válida");
@@ -110,7 +110,7 @@ public class Salida extends JFrame {
         }
     }
 
-    private Object evaluarOperaciones(String expresion) {
+    private Object evaluarOperaciones(String expresion, String variable) {
         // Verifica si la expresión es un número o cadena
         if (expresion.startsWith("\"") && expresion.endsWith("\"")) {
             registrarSimbolo(expresion, "Cadena");
@@ -123,42 +123,44 @@ public class Salida extends JFrame {
             return Double.parseDouble(expresion);
         } else {
             // Evaluar las operaciones aritméticas
-            return evaluarOperacionesAritmeticas(expresion);
+            return evaluarOperacionesAritmeticas(expresion, variable);
         }
     }
 
-    private Object evaluarOperacionesAritmeticas(String expresion) {
+    private Object evaluarOperacionesAritmeticas(String expresion, String variable) {
         if (expresion.contains("+")) {
             registrarSimbolo("+", "");
             String[] tokens = expresion.split("\\+");
-            Object left = evaluarOperaciones(tokens[0].trim());
-            Object right = evaluarOperaciones(tokens[1].trim());
-            return combinarOperaciones(left, right, "+");
+            Object left = evaluarOperaciones(tokens[0].trim(), variable);
+            Object right = evaluarOperaciones(tokens[1].trim(), variable);
+            return combinarOperaciones(left, right, "+", variable);
         } else if (expresion.contains("-")) {
             registrarSimbolo("-", "");
             String[] tokens = expresion.split("-");
-            Object left = evaluarOperaciones(tokens[0].trim());
-            Object right = evaluarOperaciones(tokens[1].trim());
-            return combinarOperaciones(left, right, "-");
+            Object left = evaluarOperaciones(tokens[0].trim(), variable);
+            Object right = evaluarOperaciones(tokens[1].trim(), variable);
+            return combinarOperaciones(left, right, "-", variable);
         } else if (expresion.contains("*")) {
             registrarSimbolo("*", "");
             String[] tokens = expresion.split("\\*");
-            Object left = evaluarOperaciones(tokens[0].trim());
-            Object right = evaluarOperaciones(tokens[1].trim());
-            return combinarOperaciones(left, right, "*");
+            Object left = evaluarOperaciones(tokens[0].trim(), variable);
+            Object right = evaluarOperaciones(tokens[1].trim(), variable);
+            return combinarOperaciones(left, right, "*", variable);
         } else if (expresion.contains("/")) {
             registrarSimbolo("/", "");
             String[] tokens = expresion.split("/");
-            Object left = evaluarOperaciones(tokens[0].trim());
-            Object right = evaluarOperaciones(tokens[1].trim());
-            return combinarOperaciones(left, right, "/");
+            Object left = evaluarOperaciones(tokens[0].trim(), variable);
+            Object right = evaluarOperaciones(tokens[1].trim(), variable);
+            return combinarOperaciones(left, right, "/", variable);
         }
         return convertirAMNumero(expresion); // Si es un número directo
     }
 
-    private Object combinarOperaciones(Object left, Object right, String operador) {
+    private Object combinarOperaciones(Object left, Object right, String operador, String variable) {
         if (left instanceof String || right instanceof String) {
-            agregarError("Incompatibilidad de tipos", numeroLinea, "Operación inválida entre tipos incompatibles - " + operador);
+            // El lexema que causa el error es el que está en la expresión, no el resultado
+            String lexemaError = (left instanceof String) ? (String) left : (String) right;
+            agregarError(lexemaError, numeroLinea, "Incompatibilidad de tipos, @" + variable + "~");
             return null;
         }
 
@@ -174,7 +176,7 @@ public class Salida extends JFrame {
                 return convertirSegunTipo(leftValue * rightValue);
             case "/":
                 if (rightValue == 0) {
-                    agregarError("División por cero", numeroLinea, "Operación inválida - División por cero");
+                    agregarError(variable, numeroLinea, "División por cero");
                     return null;
                 }
                 return convertirSegunTipo(leftValue / rightValue);
@@ -215,3 +217,4 @@ public class Salida extends JFrame {
         modeloErrores.addRow(new Object[]{codigoError, lexema, renglon, descripcion});
     }
 }
+
