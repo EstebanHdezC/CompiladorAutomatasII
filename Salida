@@ -141,12 +141,18 @@ public class Salida extends JFrame {
         } else if (expresion.contains("*")) {
             registrarSimbolo("*", "Operador");
             String[] tokens = expresion.split("\\*");
+            // Registrar los números antes de operar
+            registrarSimbolo(tokens[0].trim(), "Número");
+            registrarSimbolo(tokens[1].trim(), "Número");
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             return combinarOperaciones(left, right, "*", variable);
         } else if (expresion.contains("/")) {
             registrarSimbolo("/", "Operador");
             String[] tokens = expresion.split("/");
+            // Registrar los números antes de operar
+            registrarSimbolo(tokens[0].trim(), "Número");
+            registrarSimbolo(tokens[1].trim(), "Número");
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             return combinarOperaciones(left, right, "/", variable);
