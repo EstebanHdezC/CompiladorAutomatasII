@@ -112,12 +112,26 @@ public class Salida extends JFrame {
     }
 
     private Object evaluarOperaciones(String expresion, String variable) {
-        // Verifica si la expresión es un número o cadena
+        // Revisar y registrar operadores en la expresión
+        Pattern operadorPattern = Pattern.compile("[+\\-*/]");
+        Matcher operadorMatcher = operadorPattern.matcher(expresion);
+        while (operadorMatcher.find()) {
+            String operador = operadorMatcher.group();
+            registrarSimbolo(operador, ""); // Registrar operadores
+        }
+
         if (expresion.startsWith("\"") && expresion.endsWith("\"")) {
-            return expresion.substring(1, expresion.length() - 1);
+            // Eliminar comillas para verificar si la cadena ya está en la tabla de símbolos
+            String valor = expresion.substring(1, expresion.length() - 1);
+            if (!variables.containsValue(valor)) {
+                registrarNumeroOCadena(expresion); // Registrar con comillas
+            }
+            return valor;
         } else if (expresion.matches("-?\\d+")) {
+            registrarNumeroOCadena(expresion);
             return Integer.parseInt(expresion);
         } else if (expresion.matches("-?\\d+\\.\\d+")) {
+            registrarNumeroOCadena(expresion);
             return Double.parseDouble(expresion);
         } else {
             // Evaluar las operaciones aritméticas
@@ -125,34 +139,37 @@ public class Salida extends JFrame {
         }
     }
 
+
     private Object evaluarOperacionesAritmeticas(String expresion, String variable) {
         if (expresion.contains("+")) {
-            registrarSimbolo("+", "Operador");
             String[] tokens = expresion.split("\\+");
+            for (String token : tokens) {
+                registrarNumeroOCadena(token.trim());
+            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             return combinarOperaciones(left, right, "+", variable);
         } else if (expresion.contains("-")) {
-            registrarSimbolo("-", "Operador");
             String[] tokens = expresion.split("-");
+            for (String token : tokens) {
+                registrarNumeroOCadena(token.trim());
+            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             return combinarOperaciones(left, right, "-", variable);
         } else if (expresion.contains("*")) {
-            registrarSimbolo("*", "Operador");
             String[] tokens = expresion.split("\\*");
-            // Registrar los números antes de operar
-            registrarSimbolo(tokens[0].trim(), "Número");
-            registrarSimbolo(tokens[1].trim(), "Número");
+            for (String token : tokens) {
+                registrarNumeroOCadena(token.trim());
+            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             return combinarOperaciones(left, right, "*", variable);
         } else if (expresion.contains("/")) {
-            registrarSimbolo("/", "Operador");
             String[] tokens = expresion.split("/");
-            // Registrar los números antes de operar
-            registrarSimbolo(tokens[0].trim(), "Número");
-            registrarSimbolo(tokens[1].trim(), "Número");
+            for (String token : tokens) {
+                registrarNumeroOCadena(token.trim());
+            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             return combinarOperaciones(left, right, "/", variable);
@@ -203,22 +220,59 @@ public class Salida extends JFrame {
             return (int) valor; // Si no tiene parte decimal, es un entero
         } else {
             return valor; // Si tiene parte decimal, es un real
-        } 
+        }
     }
 
     private void registrarSimbolo(String lexema, String tipo) {
         // Evitar duplicados
         for (int i = 0; i < modeloSimbolos.getRowCount(); i++) {
             if (modeloSimbolos.getValueAt(i, 0).equals(lexema)) {
-                return;
+                // Actualizar tipo para operadores si es necesario
+                if (tipo.isEmpty() && modeloSimbolos.getValueAt(i, 1).equals("")) {
+                    return; // Si el tipo es vacío, no es necesario actualizar
+                } else {
+                    modeloSimbolos.setValueAt(tipo, i, 1);
+                    return;
+                }
             }
         }
 
-        // Si es un operador o variable indefinida, mostrar el tipo vacío
-        if (tipo.equals("Operador") || tipo.equals("Variable indefinida")) {
-            modeloSimbolos.addRow(new Object[]{lexema, ""});
-        } else {
-            modeloSimbolos.addRow(new Object[]{lexema, tipo});
+        // Añadir nueva fila
+        modeloSimbolos.addRow(new Object[]{lexema, tipo});
+    }
+
+    private void registrarNumeroOCadena(String valor) {
+        // Verificar si el valor es una cadena o un operador
+        if (valor.matches("-?\\d+") || valor.matches("-?\\d+\\.\\d+") || 
+            valor.startsWith("\"") && valor.endsWith("\"") || valor.matches("[+\\-*/]")) {
+            
+            // Determinar el tipo y el valor a registrar
+            String tipo;
+            String valorConFormato;
+            
+            if (valor.matches("[+\\-*/]")) {
+                tipo = "";  // Los operadores no tienen tipo
+                valorConFormato = valor;
+            } else if (valor.startsWith("\"")) {
+                tipo = "Cadena";
+                valorConFormato = valor; // Mantener las comillas para las cadenas
+            } else {
+                tipo = "Entero";
+                if (valor.contains(".")) {
+                    tipo = "Real";
+                }
+                valorConFormato = valor;
+            }
+
+            // Verificar si el valor ya está registrado en la tabla de símbolos
+            for (int i = 0; i < modeloSimbolos.getRowCount(); i++) {
+                if (modeloSimbolos.getValueAt(i, 0).equals(valorConFormato)) {
+                    return; // Si ya existe, no hacer nada
+                }
+            }
+            
+            // Añadir nueva fila si no está registrada
+            modeloSimbolos.addRow(new Object[]{valorConFormato, tipo});
         }
     }
 
