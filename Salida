@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 public class Salida extends JFrame {
 
     private HashMap<String, Object> variables;
+    private HashMap<String, Object> resultadosIntermedios = new HashMap<>();
     private DefaultTableModel modeloSimbolos;
     private DefaultTableModel modeloErrores;
     private int numeroLinea = 1;
@@ -47,8 +48,9 @@ public class Salida extends JFrame {
         }
     }
 
+
+
     private void procesarInstruccion(String instruccion) {
-        // Regex para capturar variables y expresiones
         Pattern patronAsignacion = Pattern.compile("@([A-Za-z0-9_]+)~=(.+)");
         Matcher matcher = patronAsignacion.matcher(instruccion);
 
@@ -70,7 +72,7 @@ public class Salida extends JFrame {
                 } else {
                     tipo = "Cadena";
                 }
-                // Añadir el lexema y el tipo a la tabla de símbolos (solo para variables, no resultados)
+                // Añadir el lexema y el tipo a la tabla de símbolos (solo para variables, no resultados intermedios)
                 registrarSimbolo("@" + variable + "~", tipo);
             }
         } else {
@@ -97,7 +99,7 @@ public class Salida extends JFrame {
                 String var = matcher.group(1);
                 if (!variables.containsKey(var)) {
                     agregarError("@" + var + "~", numeroLinea, "Variable indefinida");
-                    registrarSimbolo("@" + var + "~", "Variable indefinida");
+                    registrarSimbolo("@" + var + "~", ""); // Tipo vacío para variable indefinida
                     return null;
                 }
             }
@@ -139,43 +141,48 @@ public class Salida extends JFrame {
         }
     }
 
-
     private Object evaluarOperacionesAritmeticas(String expresion, String variable) {
         if (expresion.contains("+")) {
             String[] tokens = expresion.split("\\+");
-            for (String token : tokens) {
-                registrarNumeroOCadena(token.trim());
-            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
-            return combinarOperaciones(left, right, "+", variable);
+            Object resultado = combinarOperaciones(left, right, "+", variable);
+            // Registrar resultado intermedio sin mostrar en la tabla de símbolos
+            if (resultado != null) {
+                resultadosIntermedios.put(expresion, resultado);
+            }
+            return resultado;
         } else if (expresion.contains("-")) {
             String[] tokens = expresion.split("-");
-            for (String token : tokens) {
-                registrarNumeroOCadena(token.trim());
-            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
-            return combinarOperaciones(left, right, "-", variable);
+            Object resultado = combinarOperaciones(left, right, "-", variable);
+            if (resultado != null) {
+                resultadosIntermedios.put(expresion, resultado);
+            }
+            return resultado;
         } else if (expresion.contains("*")) {
             String[] tokens = expresion.split("\\*");
-            for (String token : tokens) {
-                registrarNumeroOCadena(token.trim());
-            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
-            return combinarOperaciones(left, right, "*", variable);
+            Object resultado = combinarOperaciones(left, right, "*", variable);
+            if (resultado != null) {
+                resultadosIntermedios.put(expresion, resultado);
+            }
+            return resultado;
         } else if (expresion.contains("/")) {
             String[] tokens = expresion.split("/");
-            for (String token : tokens) {
-                registrarNumeroOCadena(token.trim());
-            }
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
-            return combinarOperaciones(left, right, "/", variable);
+            Object resultado = combinarOperaciones(left, right, "/", variable);
+            if (resultado != null) {
+                resultadosIntermedios.put(expresion, resultado);
+            }
+            return resultado;
         }
         return convertirAMNumero(expresion); // Si es un número directo
     }
+
 
     private Object combinarOperaciones(Object left, Object right, String operador, String variable) {
         if (left instanceof String || right instanceof String) {
@@ -282,7 +289,7 @@ public class Salida extends JFrame {
 
         // Registrar la variable indefinida en la tabla de símbolos con el tipo vacío
         if (descripcion.equals("Variable indefinida")) {
-            registrarSimbolo(lexema, "Variable indefinida");
+            registrarSimbolo(lexema, "");
         }
     }
 }
