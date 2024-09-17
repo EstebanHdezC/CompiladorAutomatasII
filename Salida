@@ -17,14 +17,14 @@ public class Salida extends JFrame {
 
     public Salida(String instrucciones) {
         setTitle("Salida - Proyecto Evaluación I");
-        setSize(800, 400);
+        setSize(1000, 400); // Aumentar el tamaño para la nueva columna
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 
         // Crear tablas
-        String[] columnasSimbolos = {"Lexema", "Tipo"};
+        String[] columnasSimbolos = {"Lexema", "Tipo", "Resultado"};
         String[] columnasErrores = {"Token", "Lexema", "Renglón", "Descripción"};
-        JTable tablaSimbolos = new JTable(new DefaultTableModel(new Object[0][2], columnasSimbolos));
+        JTable tablaSimbolos = new JTable(new DefaultTableModel(new Object[0][3], columnasSimbolos));
         modeloSimbolos = (DefaultTableModel) tablaSimbolos.getModel();
         modeloErrores = new DefaultTableModel(new Object[0][4], columnasErrores);
         JTable tablaErrores = new JTable(modeloErrores);
@@ -48,8 +48,6 @@ public class Salida extends JFrame {
         }
     }
 
-
-
     private void procesarInstruccion(String instruccion) {
         Pattern patronAsignacion = Pattern.compile("@([A-Za-z0-9_]+)~=(.+)");
         Matcher matcher = patronAsignacion.matcher(instruccion);
@@ -60,10 +58,10 @@ public class Salida extends JFrame {
 
             // Evaluar la expresión o asignar valor directo
             Object resultado = evaluarExpresion(expresion, variable);
+            
+            // Si el resultado es nulo (error), aún se registra la variable con tipo vacío
             if (resultado != null) {
                 variables.put(variable, resultado);
-
-                // Determinar el tipo de dato
                 String tipo;
                 if (resultado instanceof Integer) {
                     tipo = "Entero";
@@ -72,8 +70,11 @@ public class Salida extends JFrame {
                 } else {
                     tipo = "Cadena";
                 }
-                // Añadir el lexema y el tipo a la tabla de símbolos (solo para variables, no resultados intermedios)
-                registrarSimbolo("@" + variable + "~", tipo);
+                // Registrar solo el resultado en la columna de Resultado, no en Lexema
+                registrarSimbolo("@" + variable + "~", tipo, resultadosIntermedios.get("@" + variable + "~"));
+            } else {
+                // Registrar variable aunque tenga error
+                registrarSimbolo("@" + variable + "~", "", null); // Tipo vacío para variables con errores
             }
         } else {
             agregarError(instruccion, numeroLinea, "Instrucción no válida");
@@ -99,7 +100,7 @@ public class Salida extends JFrame {
                 String var = matcher.group(1);
                 if (!variables.containsKey(var)) {
                     agregarError("@" + var + "~", numeroLinea, "Variable indefinida");
-                    registrarSimbolo("@" + var + "~", ""); // Tipo vacío para variable indefinida
+                    registrarSimbolo("@" + var + "~", "", null); // Tipo vacío para variable indefinida
                     return null;
                 }
             }
@@ -119,7 +120,7 @@ public class Salida extends JFrame {
         Matcher operadorMatcher = operadorPattern.matcher(expresion);
         while (operadorMatcher.find()) {
             String operador = operadorMatcher.group();
-            registrarSimbolo(operador, ""); // Registrar operadores
+            registrarSimbolo(operador, "", null); // Registrar operadores
         }
 
         if (expresion.startsWith("\"") && expresion.endsWith("\"")) {
@@ -147,9 +148,8 @@ public class Salida extends JFrame {
             Object left = evaluarOperaciones(tokens[0].trim(), variable);
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             Object resultado = combinarOperaciones(left, right, "+", variable);
-            // Registrar resultado intermedio sin mostrar en la tabla de símbolos
             if (resultado != null) {
-                resultadosIntermedios.put(expresion, resultado);
+                resultadosIntermedios.put("@" + variable + "~", resultado);
             }
             return resultado;
         } else if (expresion.contains("-")) {
@@ -158,7 +158,7 @@ public class Salida extends JFrame {
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             Object resultado = combinarOperaciones(left, right, "-", variable);
             if (resultado != null) {
-                resultadosIntermedios.put(expresion, resultado);
+                resultadosIntermedios.put("@" + variable + "~", resultado);
             }
             return resultado;
         } else if (expresion.contains("*")) {
@@ -167,7 +167,7 @@ public class Salida extends JFrame {
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             Object resultado = combinarOperaciones(left, right, "*", variable);
             if (resultado != null) {
-                resultadosIntermedios.put(expresion, resultado);
+                resultadosIntermedios.put("@" + variable + "~", resultado);
             }
             return resultado;
         } else if (expresion.contains("/")) {
@@ -176,13 +176,12 @@ public class Salida extends JFrame {
             Object right = evaluarOperaciones(tokens[1].trim(), variable);
             Object resultado = combinarOperaciones(left, right, "/", variable);
             if (resultado != null) {
-                resultadosIntermedios.put(expresion, resultado);
+                resultadosIntermedios.put("@" + variable + "~", resultado);
             }
             return resultado;
         }
         return convertirAMNumero(expresion); // Si es un número directo
     }
-
 
     private Object combinarOperaciones(Object left, Object right, String operador, String variable) {
         if (left instanceof String || right instanceof String) {
@@ -204,7 +203,7 @@ public class Salida extends JFrame {
                 return convertirSegunTipo(leftValue * rightValue);
             case "/":
                 if (rightValue == 0) {
-                    agregarError(variable, numeroLinea, "División por cero");
+                    agregarError("División por cero", numeroLinea, "Error en la expresión: " + left + " / " + right);
                     return null;
                 }
                 return convertirSegunTipo(leftValue / rightValue);
@@ -213,83 +212,56 @@ public class Salida extends JFrame {
         }
     }
 
+    private Object convertirSegunTipo(double valor) {
+        if (valor == (int) valor) {
+            return (int) valor;
+        } else {
+            return valor;
+        }
+    }
+
     private double convertirAMNumero(String valor) {
         try {
             return Double.parseDouble(valor);
         } catch (NumberFormatException e) {
+            agregarError(valor, numeroLinea, "No es un número válido");
             return 0;
         }
     }
 
-    private Object convertirSegunTipo(double valor) {
-        // Verifica si el valor tiene parte decimal
-        if (Math.floor(valor) == valor) {
-            return (int) valor; // Si no tiene parte decimal, es un entero
+    private void registrarNumeroOCadena(String expresion) {
+        // Determinar tipo
+        String tipo;
+        if (expresion.startsWith("\"") && expresion.endsWith("\"")) {
+            tipo = "Cadena";
+        } else if (expresion.matches("-?\\d+")) {
+            tipo = "Entero";
+        } else if (expresion.matches("-?\\d+\\.\\d+")) {
+            tipo = "Real";
         } else {
-            return valor; // Si tiene parte decimal, es un real
+            tipo = "Desconocido";
         }
+        registrarSimbolo(expresion, tipo, null);
     }
 
-    private void registrarSimbolo(String lexema, String tipo) {
-        // Evitar duplicados
+    private void registrarSimbolo(String lexema, String tipo, Object resultado) {
+        boolean encontrado = false;
         for (int i = 0; i < modeloSimbolos.getRowCount(); i++) {
             if (modeloSimbolos.getValueAt(i, 0).equals(lexema)) {
-                // Actualizar tipo para operadores si es necesario
-                if (tipo.isEmpty() && modeloSimbolos.getValueAt(i, 1).equals("")) {
-                    return; // Si el tipo es vacío, no es necesario actualizar
-                } else {
-                    modeloSimbolos.setValueAt(tipo, i, 1);
-                    return;
+                encontrado = true;
+                modeloSimbolos.setValueAt(tipo, i, 1);
+                if (resultado != null) {
+                    modeloSimbolos.setValueAt(resultado, i, 2);
                 }
+                break;
             }
         }
-
-        // Añadir nueva fila
-        modeloSimbolos.addRow(new Object[]{lexema, tipo});
-    }
-
-    private void registrarNumeroOCadena(String valor) {
-        // Verificar si el valor es una cadena o un operador
-        if (valor.matches("-?\\d+") || valor.matches("-?\\d+\\.\\d+") || 
-            valor.startsWith("\"") && valor.endsWith("\"") || valor.matches("[+\\-*/]")) {
-            
-            // Determinar el tipo y el valor a registrar
-            String tipo;
-            String valorConFormato;
-            
-            if (valor.matches("[+\\-*/]")) {
-                tipo = "";  // Los operadores no tienen tipo
-                valorConFormato = valor;
-            } else if (valor.startsWith("\"")) {
-                tipo = "Cadena";
-                valorConFormato = valor; // Mantener las comillas para las cadenas
-            } else {
-                tipo = "Entero";
-                if (valor.contains(".")) {
-                    tipo = "Real";
-                }
-                valorConFormato = valor;
-            }
-
-            // Verificar si el valor ya está registrado en la tabla de símbolos
-            for (int i = 0; i < modeloSimbolos.getRowCount(); i++) {
-                if (modeloSimbolos.getValueAt(i, 0).equals(valorConFormato)) {
-                    return; // Si ya existe, no hacer nada
-                }
-            }
-            
-            // Añadir nueva fila si no está registrada
-            modeloSimbolos.addRow(new Object[]{valorConFormato, tipo});
+        if (!encontrado) {
+            modeloSimbolos.addRow(new Object[]{lexema, tipo, resultado});
         }
     }
 
     private void agregarError(String lexema, int renglon, String descripcion) {
-        String codigoError = "ER" + contadorErrores++;  // Incrementar el contador de errores
-        modeloErrores.addRow(new Object[]{codigoError, lexema, renglon, descripcion});
-
-        // Registrar la variable indefinida en la tabla de símbolos con el tipo vacío
-        if (descripcion.equals("Variable indefinida")) {
-            registrarSimbolo(lexema, "");
-        }
+        modeloErrores.addRow(new Object[]{contadorErrores++, lexema, renglon, descripcion});
     }
 }
