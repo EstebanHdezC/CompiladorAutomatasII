@@ -56,10 +56,12 @@ public class Salida extends JFrame {
             String variable = matcher.group(1);
             String expresion = matcher.group(2).trim();
 
+            // Registrar el operador '=' en la tabla de símbolos
+            registrarSimbolo("=", "", null);
+
             // Evaluar la expresión o asignar valor directo
             Object resultado = evaluarExpresion(expresion, variable);
             
-            // Si el resultado es nulo (error), aún se registra la variable con tipo vacío
             if (resultado != null) {
                 variables.put(variable, resultado);
                 String tipo;
@@ -70,16 +72,19 @@ public class Salida extends JFrame {
                 } else {
                     tipo = "Cadena";
                 }
-                // Registrar solo el resultado en la columna de Resultado, no en Lexema
+                // Registrar el resultado en la columna 'Resultado'
                 registrarSimbolo("@" + variable + "~", tipo, resultadosIntermedios.get("@" + variable + "~"));
             } else {
-                // Registrar variable aunque tenga error
+                // Registrar la variable aunque tenga error
                 registrarSimbolo("@" + variable + "~", "", null); // Tipo vacío para variables con errores
             }
         } else {
             agregarError(instruccion, numeroLinea, "Instrucción no válida");
         }
     }
+
+    
+
 
     private Object evaluarExpresion(String expresion, String variable) {
         try {
@@ -116,20 +121,17 @@ public class Salida extends JFrame {
 
     private Object evaluarOperaciones(String expresion, String variable) {
         // Revisar y registrar operadores en la expresión
-        Pattern operadorPattern = Pattern.compile("[+\\-*/]");
+        Pattern operadorPattern = Pattern.compile("[+\\-*/=]");
         Matcher operadorMatcher = operadorPattern.matcher(expresion);
         while (operadorMatcher.find()) {
             String operador = operadorMatcher.group();
-            registrarSimbolo(operador, "", null); // Registrar operadores
+            registrarSimbolo(operador, "", null); // Registrar operadores como lexema con tipo vacío
         }
 
         if (expresion.startsWith("\"") && expresion.endsWith("\"")) {
-            // Eliminar comillas para verificar si la cadena ya está en la tabla de símbolos
-            String valor = expresion.substring(1, expresion.length() - 1);
-            if (!variables.containsValue(valor)) {
-                registrarNumeroOCadena(expresion); // Registrar con comillas
-            }
-            return valor;
+            // Mantener las comillas para que aparezcan en la tabla de símbolos
+            registrarNumeroOCadena(expresion); // Registrar la cadena con las comillas
+            return expresion.substring(1, expresion.length() - 1); // Devolver el valor sin las comillas
         } else if (expresion.matches("-?\\d+")) {
             registrarNumeroOCadena(expresion);
             return Integer.parseInt(expresion);
@@ -137,8 +139,7 @@ public class Salida extends JFrame {
             registrarNumeroOCadena(expresion);
             return Double.parseDouble(expresion);
         } else {
-            // Evaluar las operaciones aritméticas
-            return evaluarOperacionesAritmeticas(expresion, variable);
+            return evaluarOperacionesAritmeticas(expresion, variable); // Evaluar las operaciones aritméticas
         }
     }
 
