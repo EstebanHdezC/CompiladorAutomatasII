@@ -29,7 +29,8 @@ public class Entrada extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 // Lógica para procesar las instrucciones
                 String instrucciones = inputArea.getText();
-                new Salida(instrucciones).setVisible(true); // Pasa las instrucciones a la ventana de salida
+                new Triplo(instrucciones).setVisible(true); // Pasa las instrucciones a la clase Triplo
+                new Salida(instrucciones).setVisible(true); // Pasa las instrucciones a la clase Salida
             }
         });
 
