@@ -1,3 +1,4 @@
+
 package Compilador;
 
 import javax.swing.*;
@@ -49,6 +50,18 @@ public class Salida extends JFrame {
     }
 
     private void procesarInstruccion(String instruccion) {
+        Pattern patronIf = Pattern.compile("^if\\s*\\(.+\\)\\s*\\{"); // Expresión regular para detectar if
+        Pattern patronLlaves = Pattern.compile("^\\{|\\}$"); // Expresión regular para detectar llaves { o }
+
+        // Verifica si la instrucción es una estructura if o una llave
+        Matcher matcherIf = patronIf.matcher(instruccion);
+        Matcher matcherLlaves = patronLlaves.matcher(instruccion);
+
+        if (matcherIf.matches() || matcherLlaves.matches()) {
+            // Si la instrucción es un if o una llave, se ignora sin registrarla en ninguna tabla
+            return;
+        }
+
         Pattern patronAsignacion = Pattern.compile("@([A-Za-z0-9_]+)~=(.+)");
         Matcher matcher = patronAsignacion.matcher(instruccion);
 
@@ -82,6 +95,8 @@ public class Salida extends JFrame {
             agregarError(instruccion, numeroLinea, "Instrucción no válida");
         }
     }
+
+
 
     
 
@@ -265,4 +280,7 @@ public class Salida extends JFrame {
     private void agregarError(String lexema, int renglon, String descripcion) {
         modeloErrores.addRow(new Object[]{contadorErrores++, lexema, renglon, descripcion});
     }
+
+	
 }
+	
