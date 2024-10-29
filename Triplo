@@ -1,0 +1,296 @@
+package Compilador;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+public class Triplo extends JFrame {
+    private JTable tablaTriplo;
+    private DefaultTableModel modeloTriplo; // Este será el único modelo de la tabla
+    private String codigo; // Variable para almacenar el código
+
+    public Triplo(String codigo) {
+        this.codigo = codigo;
+
+        setTitle("Tabla Triplo");
+        setSize(600, 400);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Cerrar solo esta ventana
+
+        // Inicializar el modelo de la tabla con las columnas necesarias
+        modeloTriplo = new DefaultTableModel(new Object[]{"N°", "Dato Objeto", "Dato fuente", "Operador"}, 0);
+        
+        // Asignar el modelo a la tabla
+        tablaTriplo = new JTable(modeloTriplo);
+        
+        JScrollPane scrollPane = new JScrollPane(tablaTriplo);
+        getContentPane().add(scrollPane); // Agrega el JScrollPane a la ventana
+
+        // Cargar datos en la tabla Triplo
+        GenerarTriplo();
+       SaltosW();
+    }
+
+    // Método para agregar triplos a la tabla
+    private void agregarTriplo(int num, String datoObjeto, String datoFuente, String operador) {
+        modeloTriplo.addRow(new Object[]{num, datoObjeto, datoFuente, operador});
+    }
+    
+ // Al generar el triplo, agrega una columna que identifique el operador lógico
+    
+
+    public void GenerarTriplo() {
+        // Aquí está la lógica para cargar valores en la tabla
+    	int whileCounter = 1;
+    	    // Aquí esta la logíca para carga valores a mi tabla
+    	    String[] lineas = codigo.split("\n"); // Dividir el código en líneas
+    	    int contadorLinea = 1; // Contador de líneas para los triplos
+    	   // int temporalCounter = 1; // Para contar temporales (T1, T2, etc.)
+    	    String temporal = "T"; // Prefijo para los temporales
+
+    	    for (String linea : lineas) {
+    	        linea = linea.trim(); // Eliminar espacios en blanco
+    	        
+    	        // Asignaciones simples (sin temporales)
+    	       if (linea.contains("=") && !linea.contains("+") && !linea.contains("-") && !linea.contains("*") && !linea.contains("/")&&!linea.contains("if")) {
+    	        	String[] partes = linea.split("=");
+    	            agregarTriplo(contadorLinea++, partes[0].trim(), partes[1].trim(), "=");
+    	            //------------------------------------------------
+    	            //------------------------------------------------
+    	            
+    	        }
+
+    	        // Operaciones aritméticas
+    	       else // Modificación para manejar operaciones aritméticas
+    	        	if (linea.contains("+") || linea.contains("-") || linea.contains("*") || linea.contains("/")) {
+    	        		int temporalCounter = 1;
+    	        	    String variableDestino = linea.split("=")[0].trim(); // La variable de destino
+    	        	    String expresion = linea.split("=")[1].trim(); // La expresión que se debe evaluar
+    	        	    // Lista de operandos separados por operadores
+    	        	    List<String> operandos = new ArrayList<>(Arrays.asList(expresion.split("(?<=[-+/])|(?=[-+/])")));
+
+    	        	    // Procesar primero multiplicación y división
+    	        	    for (int i = 0; i < operandos.size(); i++) {
+    	        	        String token = operandos.get(i).trim();
+
+    	        	        if (token.equals("*") || token.equals("/")) {
+    	        	            String temporal1 = "T" + temporalCounter++;
+    	        	            String operador = token;
+    	        	            String operando1 = operandos.get(i - 1).trim();
+    	        	            String operando2 = operandos.get(i + 1).trim();
+
+    	        	            // Asignar el resultado de la operación al primer temporal
+    	        	            agregarTriplo(contadorLinea++, temporal1, operando1, "="); 
+    	        	            agregarTriplo(contadorLinea++, temporal1, operando2, operador);
+
+    	        	            // Remplazar los operandos procesados por el temporal en la lista
+    	        	            operandos.set(i - 1, temporal1);
+    	        	            operandos.remove(i); // Eliminar el operador
+    	        	            operandos.remove(i); // Eliminar el siguiente operando
+    	        	            i--; // Ajustar índice tras la eliminación
+    	        	        }
+    	        	    }
+
+    	        	    // Procesar sumas y restas
+    	        	    String temporalActual = "T" + temporalCounter++;
+    	        	    boolean primerTemporalAsignado = false;
+
+    	        	    for (int i = 0; i < operandos.size(); i++) {
+    	        	        String token = operandos.get(i).trim();
+
+    	        	        if (token.equals("+") || token.equals("-")) {
+    	        	            String operador = token;
+    	        	            String operando = operandos.get(i + 1).trim();
+
+    	        	            // Si aún no se ha asignado el primer temporal
+    	        	            if (!primerTemporalAsignado) {
+    	        	                agregarTriplo(contadorLinea++, temporalActual, operandos.get(i - 1).trim(), "="); 
+    	        	                primerTemporalAsignado = true;
+    	        	            }
+
+    	        	            // Agregar la operación con el temporal
+    	        	            agregarTriplo(contadorLinea++, temporalActual, operando, operador);
+    	        	        }
+    	        	    }
+
+    	        	    // Asignar finalmente el valor del temporal a la variable destino
+    	        	    agregarTriplo(contadorLinea++, variableDestino, temporalActual, "=");
+    	        	}
+//-----------------------------------------
+    	        // Condición while
+    	        	else if (linea.contains("if")) {
+    	        		
+    	        		int temporalCounter = 1;
+    	        	    String condiciones = linea.substring(linea.indexOf('(') + 1, linea.lastIndexOf(')')).trim();
+
+    	        	    // Dividir las condiciones por operadores lógicos (&&, ||)
+    	        	    String[] condicionesSplit = condiciones.split("&&|\\|\\|");
+    	        	    
+    	        	    // Iterar sobre cada condición
+    	        	    for (String condicion : condicionesSplit) {
+    	        	        // Procesar cada condición y extraer operadores de comparación
+    	        	        String[] operandosCondicion = condicion.split("(>=|<=|!=|==|>|<)");
+
+    	        	        // Validar que tenemos los operandos correctamente
+    	        	        if (operandosCondicion.length == 2) {
+    	        	            String operando1 = operandosCondicion[0].trim();
+    	        	            String operando2 = operandosCondicion[1].trim();
+
+    	        	            // Determinar el operador de comparación
+    	        	            String operadorCondicion = condicion.contains(">=") ? ">=" :
+    	        	                                       condicion.contains("<=") ? "<=" :
+    	        	                                       condicion.contains("!=") ? "!=" :
+    	        	                                       condicion.contains("==") ? "==" :
+    	        	                                       condicion.contains(">") ? ">" : "<";
+
+    	        	            // Generar triplo para la primera parte de la condición
+    	        	            String temporalActual = "T" + temporalCounter++;
+    	        	            agregarTriplo(contadorLinea++, temporalActual, operando1, "=");
+    	        	            agregarTriplo(contadorLinea++, temporalActual, operando2, operadorCondicion);
+
+    	        	            // Agregar las líneas True y False para la condición actual, con contador while
+    	        	            if(condiciones.contains ("&&")){
+    	        	            agregarTriplo(contadorLinea++, "..", "True" + whileCounter, "");
+    	        	            agregarTriplo(contadorLinea++, "..", "False" + whileCounter, "");
+    	        	            }else if(condiciones.contains ("||")){
+    	        	            agregarTriplo(contadorLinea++, ".", "True" + whileCounter, "");
+    	        	            agregarTriplo(contadorLinea++, ".", "False" + whileCounter, "");
+    	        	            }
+    	        	            else{
+        	        	            agregarTriplo(contadorLinea++, "", "True" + whileCounter, "");
+        	        	            agregarTriplo(contadorLinea++, "", "False" + whileCounter, "");
+        	        	            }
+    	        	        } else {
+    	        	            System.out.println("Error: Condición no válida en el while: " + condicion);
+    	        	        }
+    	        	    }
+
+    	        	    // Después de procesar las condiciones del while, agregar la línea del salto BYE con contador
+    	        	    //agregarTriplo(contadorLinea++, "", "", "BYE" + whileCounter);
+
+    	        	    // Incrementar el contador de while para distinguir el siguiente ciclo
+    	        	    whileCounter++;
+    	        	}
+    	        	else if(linea.contains("else")){
+    	        		int by=whileCounter-1;
+    	        		agregarTriplo(contadorLinea++, "", "", "BYE"+by);
+    	        	}
+    	       
+
+    	  }
+    	    agregarTriplo(contadorLinea++, "", "", "");
+
+    }
+    
+    public void SaltosW() {
+        // Listas para almacenar las filas correspondientes a TRUE, FALSE y BYE para cada bloque de while
+        Map<Integer, List<Integer>> filasTruePorWhile = new HashMap<>();
+        Map<Integer, List<Integer>> filasFalsePorWhile = new HashMap<>();
+        Map<Integer, Integer> filaBYEPorWhile = new HashMap<>();
+        String operadorCondicion = null;
+        String[] lineas = codigo.split("\n");
+
+        // Inicializar filaVacia con el índice de la última fila en el modelo de la tabla
+        int filaVacia = modeloTriplo.getRowCount() - 1;
+         filaVacia = filaVacia + 1;
+
+        // Paso 1: Identificar las filas donde están TRUE, FALSE, y BYE para cada bloque de while
+        for (int i = 0; i < modeloTriplo.getRowCount(); i++) {
+            String datoFuente = (String) modeloTriplo.getValueAt(i, 2); // Columna "Dato fuente"
+            String operador = (String) modeloTriplo.getValueAt(i, 3); // Columna "Operador"
+            
+            // Identificar contadores de TRUE, FALSE y BYE por bloque de while
+            if (datoFuente.startsWith("True") && "".equals(operador)) {
+                int whileIndex = Integer.parseInt(datoFuente.replace("True", ""));
+                filasTruePorWhile.computeIfAbsent(whileIndex, k -> new ArrayList<>()).add(i);
+            } else if (datoFuente.startsWith("False") && "".equals(operador)) {
+                int whileIndex = Integer.parseInt(datoFuente.replace("False", ""));
+                filasFalsePorWhile.computeIfAbsent(whileIndex, k -> new ArrayList<>()).add(i);
+            } else if (operador.startsWith("BYE")) {
+                int whileIndex = Integer.parseInt(operador.replace("BYE", ""));
+                filaBYEPorWhile.put(whileIndex, i);
+            } else if ("&&".equals(operador) || "||".equals(operador)) {
+                operadorCondicion = operador;
+            }
+        }
+
+        // Paso 2: Asignar los saltos por cada bloque de while
+        for (int whileIndex : filaBYEPorWhile.keySet()) {
+            List<Integer> filasTrue = filasTruePorWhile.get(whileIndex);
+            List<Integer> filasFalse = filasFalsePorWhile.get(whileIndex);
+            int filaBYE = filaBYEPorWhile.get(whileIndex);
+
+            if (filasTrue.size() == 1 && filasFalse.size() == 1 && filaBYE != -1) {
+                int filaTrue = filasTrue.get(0);
+                int filaFalse = filasFalse.get(0);
+
+                int saltoTrue = filaFalse + 2;
+                modeloTriplo.setValueAt("" + saltoTrue, filaTrue, 3);
+                int saltoFalse = filaBYE + 2;
+                modeloTriplo.setValueAt("" + saltoFalse, filaFalse, 3);
+            }
+
+            if (filasTrue.size() >= 2 && filasFalse.size() >= 2 && filaBYE != -1) {
+                int filaTrue1 = filasTrue.get(0);
+                int filaFalse1 = filasFalse.get(0);
+                int filaTrue2 = filasTrue.get(1);
+                int filaFalse2 = filasFalse.get(1);
+
+                boolean saltoAsignado = false;
+                boolean salt = false;
+
+                for (int i = 0; i < modeloTriplo.getRowCount(); i++) {
+                    String operadorLogico = modeloTriplo.getValueAt(i, 1).toString();
+
+                    if (operadorLogico.equals("..") && !saltoAsignado) {
+                        if (modeloTriplo.getValueAt(filaTrue1, 1).equals("..") && modeloTriplo.getValueAt(filaFalse1, 1).equals("..")) {
+                            int saltoTrue1 = filaFalse1 + 2;
+                            modeloTriplo.setValueAt("" + saltoTrue1, filaTrue1, 3);
+
+                            int saltoFalse1 = filaBYE + 2;
+                            modeloTriplo.setValueAt("" + saltoFalse1, filaFalse1, 3);
+
+                            int saltoTrue2 = filaFalse2 + 2;
+                            modeloTriplo.setValueAt("" + saltoTrue2, filaTrue2, 3);
+
+                            int saltoFalse2 = filaBYE + 2;
+                            modeloTriplo.setValueAt("" + saltoFalse2, filaFalse2, 3);
+
+                            saltoAsignado = true;
+                        }
+                    }
+
+                    if (operadorLogico.equals(".") && !salt) {
+                        if (modeloTriplo.getValueAt(filaTrue1, 1).equals(".") && modeloTriplo.getValueAt(filaFalse1, 1).equals(".")) {
+                            int saltoTrue1 = filaFalse2 + 2;
+                            modeloTriplo.setValueAt("" + saltoTrue1, filaTrue1, 3);
+
+                            int saltoFalse1 = filaFalse1 + 2;
+                            modeloTriplo.setValueAt("" + saltoFalse1, filaFalse1, 3);
+
+                            int saltoTrue2 = filaFalse2 + 2;
+                            modeloTriplo.setValueAt("" + saltoTrue2, filaTrue2, 3);
+
+                            int saltoFalse2 = filaBYE + 2;
+                            modeloTriplo.setValueAt("" + saltoFalse2, filaFalse2, 3);
+
+                            salt = true;
+                        }
+                    }
+                }
+            }
+
+            // Paso 3: Asignar el salto para BYE a la fila vacía
+            if (filaBYE != -1) {
+                modeloTriplo.setValueAt("" + filaVacia, filaBYE, 2);
+            }
+        }
+    }
+
+}
