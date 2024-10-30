@@ -50,15 +50,17 @@ public class Salida extends JFrame {
     }
 
     private void procesarInstruccion(String instruccion) {
-        Pattern patronIf = Pattern.compile("^if\\s*\\(.+\\)\\s*\\{"); // Expresión regular para detectar if
+        Pattern patronIf = Pattern.compile("^if\\s*\\(.+\\)\\s*"); // Expresión regular para detectar if
+        Pattern patronElse = Pattern.compile("^else\\s*\\{?$"); // Expresión regular para detectar else
         Pattern patronLlaves = Pattern.compile("^\\{|\\}$"); // Expresión regular para detectar llaves { o }
 
-        // Verifica si la instrucción es una estructura if o una llave
+        // Verifica si la instrucción es una estructura if, else o una llave
         Matcher matcherIf = patronIf.matcher(instruccion);
+        Matcher matcherElse = patronElse.matcher(instruccion);
         Matcher matcherLlaves = patronLlaves.matcher(instruccion);
 
-        if (matcherIf.matches() || matcherLlaves.matches()) {
-            // Si la instrucción es un if o una llave, se ignora sin registrarla en ninguna tabla
+        if (matcherIf.matches() || matcherElse.matches() || matcherLlaves.matches()) {
+            // Si la instrucción es un if, else o una llave, se ignora sin registrarla en ninguna tabla
             return;
         }
 
@@ -95,10 +97,6 @@ public class Salida extends JFrame {
             agregarError(instruccion, numeroLinea, "Instrucción no válida");
         }
     }
-
-
-
-    
 
 
     private Object evaluarExpresion(String expresion, String variable) {
