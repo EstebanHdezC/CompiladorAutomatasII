@@ -47,7 +47,7 @@ public class Triplo extends JFrame {
 
     public void GenerarTriplo() {
         // Aquí está la lógica para cargar valores en la tabla
-    	int whileCounter = 1;
+    	int ContadorIf = 1;
     	    // Aquí esta la logíca para carga valores a mi tabla
     	    String[] lineas = codigo.split("\n"); // Dividir el código en líneas
     	    int contadorLinea = 1; // Contador de líneas para los triplos
@@ -123,7 +123,7 @@ public class Triplo extends JFrame {
     	        	    agregarTriplo(contadorLinea++, variableDestino, temporalActual, "=");
     	        	}
 //-----------------------------------------
-    	        // Condición while
+    	        // Condición if
     	        	else if (linea.contains("if")) {
     	        		
     	        		int temporalCounter = 1;
@@ -154,32 +154,29 @@ public class Triplo extends JFrame {
     	        	            agregarTriplo(contadorLinea++, temporalActual, operando1, "=");
     	        	            agregarTriplo(contadorLinea++, temporalActual, operando2, operadorCondicion);
 
-    	        	            // Agregar las líneas True y False para la condición actual, con contador while
+    	        	            // Agregar las líneas True y False para la condición actual, con contador if
     	        	            if(condiciones.contains ("&&")){
-    	        	            agregarTriplo(contadorLinea++, "..", "True" + whileCounter, "");
-    	        	            agregarTriplo(contadorLinea++, "..", "False" + whileCounter, "");
+    	        	            agregarTriplo(contadorLinea++, "..", "True" + ContadorIf, "");
+    	        	            agregarTriplo(contadorLinea++, "..", "False" + ContadorIf, "");
     	        	            }else if(condiciones.contains ("||")){
-    	        	            agregarTriplo(contadorLinea++, ".", "True" + whileCounter, "");
-    	        	            agregarTriplo(contadorLinea++, ".", "False" + whileCounter, "");
+    	        	            agregarTriplo(contadorLinea++, ".", "True" + ContadorIf, "");
+    	        	            agregarTriplo(contadorLinea++, ".", "False" + ContadorIf, "");
     	        	            }
     	        	            else{
-        	        	            agregarTriplo(contadorLinea++, "", "True" + whileCounter, "");
-        	        	            agregarTriplo(contadorLinea++, "", "False" + whileCounter, "");
+        	        	            agregarTriplo(contadorLinea++, "", "True" + ContadorIf, "");
+        	        	            agregarTriplo(contadorLinea++, "", "False" + ContadorIf, "");
         	        	            }
     	        	        } else {
-    	        	            System.out.println("Error: Condición no válida en el while: " + condicion);
+    	        	            System.out.println("Error: Condición no válida en el if: " + condicion);
     	        	        }
     	        	    }
 
-    	        	    // Después de procesar las condiciones del while, agregar la línea del salto BYE con contador
-    	        	    //agregarTriplo(contadorLinea++, "", "", "BYE" + whileCounter);
-
-    	        	    // Incrementar el contador de while para distinguir el siguiente ciclo
-    	        	    whileCounter++;
+    	        	
+    	        	    ContadorIf++;
     	        	}
     	        	else if(linea.contains("else")){
-    	        		int by=whileCounter-1;
-    	        		agregarTriplo(contadorLinea++, "", "", "BYE"+by);
+    	        		int rd=ContadorIf-1;
+    	        		agregarTriplo(contadorLinea++, "", "", "JMP"+rd);
     	        	}
     	       
 
@@ -189,10 +186,10 @@ public class Triplo extends JFrame {
     }
     
     public void SaltosW() {
-        // Listas para almacenar las filas correspondientes a TRUE, FALSE y BYE para cada bloque de while
-        Map<Integer, List<Integer>> filasTruePorWhile = new HashMap<>();
-        Map<Integer, List<Integer>> filasFalsePorWhile = new HashMap<>();
-        Map<Integer, Integer> filaBYEPorWhile = new HashMap<>();
+        // Listas para almacenar las filas correspondientes a TRUE, FALSE y JMP para IF
+        Map<Integer, List<Integer>> filasIfTrue = new HashMap<>();
+        Map<Integer, List<Integer>> filasIfFalse = new HashMap<>();
+        Map<Integer, Integer> filaJMPIF = new HashMap<>();
         String operadorCondicion = null;
         String[] lineas = codigo.split("\n");
 
@@ -200,43 +197,43 @@ public class Triplo extends JFrame {
         int filaVacia = modeloTriplo.getRowCount() - 1;
          filaVacia = filaVacia + 1;
 
-        // Paso 1: Identificar las filas donde están TRUE, FALSE, y BYE para cada bloque de while
+        // Paso 1: Identificar las filas donde están TRUE, FALSE, y JMP para cada bloque de if
         for (int i = 0; i < modeloTriplo.getRowCount(); i++) {
             String datoFuente = (String) modeloTriplo.getValueAt(i, 2); // Columna "Dato fuente"
             String operador = (String) modeloTriplo.getValueAt(i, 3); // Columna "Operador"
             
-            // Identificar contadores de TRUE, FALSE y BYE por bloque de while
+            // Identificar contadores de TRUE, FALSE y JMP por bloque de if
             if (datoFuente.startsWith("True") && "".equals(operador)) {
-                int whileIndex = Integer.parseInt(datoFuente.replace("True", ""));
-                filasTruePorWhile.computeIfAbsent(whileIndex, k -> new ArrayList<>()).add(i);
+                int IfIndex = Integer.parseInt(datoFuente.replace("True", ""));
+                filasIfTrue.computeIfAbsent(IfIndex, k -> new ArrayList<>()).add(i);
             } else if (datoFuente.startsWith("False") && "".equals(operador)) {
-                int whileIndex = Integer.parseInt(datoFuente.replace("False", ""));
-                filasFalsePorWhile.computeIfAbsent(whileIndex, k -> new ArrayList<>()).add(i);
-            } else if (operador.startsWith("BYE")) {
-                int whileIndex = Integer.parseInt(operador.replace("BYE", ""));
-                filaBYEPorWhile.put(whileIndex, i);
+                int IfIndex = Integer.parseInt(datoFuente.replace("False", ""));
+                filasIfFalse.computeIfAbsent(IfIndex, k -> new ArrayList<>()).add(i);
+            } else if (operador.startsWith("JMP")) {
+                int IfIndex = Integer.parseInt(operador.replace("JMP", ""));
+                filaJMPIF.put(IfIndex, i);
             } else if ("&&".equals(operador) || "||".equals(operador)) {
                 operadorCondicion = operador;
             }
         }
 
-        // Paso 2: Asignar los saltos por cada bloque de while
-        for (int whileIndex : filaBYEPorWhile.keySet()) {
-            List<Integer> filasTrue = filasTruePorWhile.get(whileIndex);
-            List<Integer> filasFalse = filasFalsePorWhile.get(whileIndex);
-            int filaBYE = filaBYEPorWhile.get(whileIndex);
+        // Paso 2: Asignar los saltos por cada bloque de if
+        for (int IfIndex : filaJMPIF.keySet()) {
+            List<Integer> filasTrue = filasIfTrue.get(IfIndex);
+            List<Integer> filasFalse = filasIfFalse.get(IfIndex);
+            int filaJMP = filaJMPIF.get(IfIndex);
 
-            if (filasTrue.size() == 1 && filasFalse.size() == 1 && filaBYE != -1) {
+            if (filasTrue.size() == 1 && filasFalse.size() == 1 && filaJMP != -1) {
                 int filaTrue = filasTrue.get(0);
                 int filaFalse = filasFalse.get(0);
 
                 int saltoTrue = filaFalse + 2;
                 modeloTriplo.setValueAt("" + saltoTrue, filaTrue, 3);
-                int saltoFalse = filaBYE + 2;
+                int saltoFalse = filaJMP + 2;
                 modeloTriplo.setValueAt("" + saltoFalse, filaFalse, 3);
             }
 
-            if (filasTrue.size() >= 2 && filasFalse.size() >= 2 && filaBYE != -1) {
+            if (filasTrue.size() >= 2 && filasFalse.size() >= 2 && filaJMP != -1) {
                 int filaTrue1 = filasTrue.get(0);
                 int filaFalse1 = filasFalse.get(0);
                 int filaTrue2 = filasTrue.get(1);
@@ -253,13 +250,13 @@ public class Triplo extends JFrame {
                             int saltoTrue1 = filaFalse1 + 2;
                             modeloTriplo.setValueAt("" + saltoTrue1, filaTrue1, 3);
 
-                            int saltoFalse1 = filaBYE + 2;
+                            int saltoFalse1 = filaJMP + 2;
                             modeloTriplo.setValueAt("" + saltoFalse1, filaFalse1, 3);
 
                             int saltoTrue2 = filaFalse2 + 2;
                             modeloTriplo.setValueAt("" + saltoTrue2, filaTrue2, 3);
 
-                            int saltoFalse2 = filaBYE + 2;
+                            int saltoFalse2 = filaJMP + 2;
                             modeloTriplo.setValueAt("" + saltoFalse2, filaFalse2, 3);
 
                             saltoAsignado = true;
@@ -277,7 +274,7 @@ public class Triplo extends JFrame {
                             int saltoTrue2 = filaFalse2 + 2;
                             modeloTriplo.setValueAt("" + saltoTrue2, filaTrue2, 3);
 
-                            int saltoFalse2 = filaBYE + 2;
+                            int saltoFalse2 = filaJMP + 2;
                             modeloTriplo.setValueAt("" + saltoFalse2, filaFalse2, 3);
 
                             salt = true;
@@ -286,9 +283,9 @@ public class Triplo extends JFrame {
                 }
             }
 
-            // Paso 3: Asignar el salto para BYE a la fila vacía
-            if (filaBYE != -1) {
-                modeloTriplo.setValueAt("" + filaVacia, filaBYE, 2);
+            // Paso 3: Asignar el salto para JMP a la fila vacía
+            if (filaJMP != -1) {
+                modeloTriplo.setValueAt("" + filaVacia, filaJMP, 2);
             }
         }
     }
